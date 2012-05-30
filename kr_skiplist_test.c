@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     }
     
     void *pValue;
-    pValue = kr_skiplist_lookup(krsl, value[7]);
+    pValue = kr_skiplist_lookup_cycle(krsl, value[7]);
     if (*(int *)pValue == value[7]) {
         printf("contain value[%d]:[%d]\n", 7, value[7]);
     } else {
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
     int nRet = kr_skiplist_delete(krsl, value[7], &value[7]);
     printf("kr_skiplist_delete value[%d]:[%d] [%d]\n", 7, value[7], nRet);
     
-    pValue = kr_skiplist_lookup(krsl, value[7]);
+    pValue = kr_skiplist_lookup_cycle(krsl, value[7]);
     if (*(int *)pValue == value[7]) {
         printf("contain value[%d]:[%d]\n", 7, value[7]);
     } else {
@@ -51,5 +51,6 @@ printf("level[%d], length[%d]\n", krsl->level, krsl->length);
 
     kr_skiplist_free(krsl);
     
+    printf("Sucess!\n");
     return 0;
 }

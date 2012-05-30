@@ -1,76 +1,99 @@
 #include "kr_conhash.h"
+#include <stdint.h>
+#include <assert.h>
 
-void kr_skiplist_print(T_KRSkipList *krsl) 
+static char *machines[5] = {"tiger-laptop", 
+                            "rabbit-laptop", 
+                            "dragon-laptop", 
+                            "snake-laptop", 
+                            "horse-laptop"};
+
+
+void kr_vnode_print(void *value, void *data) 
 {
-    T_KRSkipListNode *node = krsl->header->forward[0], *next;
-
-    while(node) {
-        next = node->forward[0];
-        T_KRVirtualNode *vnode = node->value;
-        printf("node->key[%u], vnode->hash[%u], vnode->vid[%s], vnode->node->id[%s]\n", 
-                node->key, vnode->hash, vnode->vid, vnode->node->id);
-        
-        node = next;
-    }
+    T_KRVirtualNode *vnode = (T_KRVirtualNode *)value;
+    printf("vnode->hash[%u], vnode->vid[%s], node->id[%s]\n", 
+           vnode->hash, vnode->vid, vnode->node->id);
 }
+
+
+void kr_node_print(void *value, void *data) 
+{
+    T_KRActualNode *node = (T_KRActualNode *)value;
+    printf("node->hash[%u], node->id[%s], node->weights[%u], node->kicks[%u]\n", 
+           node->hash, node->id, node->weights, node->kicks);
+}
+
 
 int main(int argc, char *argv[])
 {
     int i;
-    T_KRConHash *krch;
-    krch = kr_conhash_construct(13, NULL);
-    
-    T_KRActualNode *node[5];
-    node[0] = kr_conhash_create_node("tiger-laptop", 9);
-    node[1] = kr_conhash_create_node("rabbit-laptop", 1);
-    node[2] = kr_conhash_create_node("dragon-laptop", 2);
-    node[3] = kr_conhash_create_node("snake-laptop", 4);
-    node[4] = kr_conhash_create_node("horse-laptop", 8);
-    
-    
-    kr_conhash_insert(krch, node[0]);
-    kr_conhash_insert(krch, node[1]);
-    kr_conhash_insert(krch, node[2]);
-    kr_conhash_insert(krch, node[3]);
-    kr_conhash_insert(krch, node[4]);
-
-printf("node_num[%u], vnode_num[%u]\n", krch->node_num, krch->vnode_list->length);
-    
-    T_KRActualNode *kick_node;
+    int result = 0;
+    T_KRConHash *krch = NULL;
+    T_KRActualNode *kick_node = NULL;
     char kick_value[200] = {0};
+    
+    krch = kr_conhash_construct(NULL);
+    assert(krch);
+    result = kr_conhash_add(krch, machines[0], 9);
+    assert(result == 0);
+    result = kr_conhash_add(krch, machines[1], 3);
+    assert(result == 0);
+    result = kr_conhash_add(krch, machines[2], 12);
+    assert(result == 0);
+    result = kr_conhash_add(krch, machines[3], 4);
+    assert(result == 0);
+    result = kr_conhash_add(krch, machines[4], 8);
+    assert(result == 0);
+    
+printf("node_num[%u], vnode_num[%u]\n", \
+           krch->node_list->length, krch->vnode_list->length);
+    
     for (i = 0; i < 20; i++) {
-        snprintf(kick_value, sizeof(kick_value), "haha-hehe-hihi-%03d", i);
+        if (i%3 == 0) {
+            snprintf(kick_value, sizeof(kick_value), "haha-%03d", i);
+        } else if (i%3 == 1) {
+            snprintf(kick_value, sizeof(kick_value), "hehe-%03d", i);
+        } else {
+            snprintf(kick_value, sizeof(kick_value), "hihi-%03d", i);
+        }
         kick_node = kr_conhash_locate(krch, kick_value);
         printf("kick [%s] node is[%s]\n", kick_value, kick_node->id);
     }
     
-    kr_skiplist_print(krch->vnode_list);
+    kr_skiplist_foreach(krch->vnode_list, kr_vnode_print, NULL);
+    kr_skiplist_foreach(krch->node_list, kr_node_print, NULL);
     
-    kr_conhash_delete(krch, node[0]);
-    printf("delete node [%s]\n", node[0]->id);
-    kr_conhash_delete(krch, node[4]);
-    printf("delete node [%s]\n", node[4]->id);
+    result = kr_conhash_remove(krch, machines[0]);
+    assert(result == 0);
+    printf("delete machine [%s]\n", machines[0]);
+    result = kr_conhash_remove(krch, machines[4]);
+    assert(result == 0);
+    printf("delete machine [%s]\n", machines[4]);
+    result = kr_conhash_adjust_weights(krch, machines[1], 5);
+    assert(result == 0);
+    printf("adjust machine[%s] weights[%u]\n", machines[1], 5);
+printf("node_num[%u], vnode_num[%u]\n", \
+           krch->node_list->length, krch->vnode_list->length);
     
-    kr_skiplist_print(krch->vnode_list);
-printf("node_num[%u], vnode_num[%u]\n", krch->node_num, krch->vnode_list->length);
-
     for (i = 0; i < 20; i++) {
-        snprintf(kick_value, sizeof(kick_value), "haha-hehe-hihi-%03d", i);
+        if (i%3 == 0) {
+            snprintf(kick_value, sizeof(kick_value), "haha-%03d", i);
+        } else if (i%3 == 1) {
+            snprintf(kick_value, sizeof(kick_value), "hehe-%03d", i);
+        } else {
+            snprintf(kick_value, sizeof(kick_value), "hihi-%03d", i);
+        }
         kick_node = kr_conhash_locate(krch, kick_value);
         printf("kick [%s] node is[%s]\n", kick_value, kick_node->id);
     }
     
-    
-    kr_conhash_free_node(node[0]);
-    kr_conhash_free_node(node[1]);
-    kr_conhash_free_node(node[2]);
-    kr_conhash_free_node(node[3]);
-    kr_conhash_free_node(node[4]);
-
-printf("node_num[%u], vnode_num[%u]\n", krch->node_num, krch->vnode_list->length);
+    kr_skiplist_foreach(krch->vnode_list, kr_vnode_print, NULL);
+    kr_skiplist_foreach(krch->node_list, kr_node_print, NULL);
 
     kr_conhash_destruct(krch);
     
+    printf("Sucess!\n");
     return 0;
 }
 

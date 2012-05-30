@@ -30,7 +30,7 @@ void kr_skiplist_free_node(T_KRSkipListNode *node)
 }
 
 
-T_KRSkipList *kr_skiplist_create(KRCompareFunc kr_compare_func) 
+T_KRSkipList *kr_skiplist_create(KRCompareFunc compare_func) 
 {
     T_KRSkipList *krsl;
     int i;
@@ -42,11 +42,11 @@ T_KRSkipList *kr_skiplist_create(KRCompareFunc kr_compare_func)
     }
     krsl->header = kr_skiplist_create_node(ZSKIPLIST_MAXLEVEL, 0, NULL);
     for (i = 0; i < ZSKIPLIST_MAXLEVEL; i++) {
-        krsl->header->forward[i] = (T_KRSkipListNode *)NULL;
+        krsl->header->forward[i] = NULL;
     }
     krsl->length = 0;
     krsl->level = 1;
-    krsl->compare_func = kr_compare_func;
+    krsl->compare_func = compare_func;
     
     return krsl;
 }
@@ -78,7 +78,7 @@ static int kr_skiplist_random_level(unsigned int key)
 
 
 static T_KRSkipListNode *
-kr_skiplist_search_internal(T_KRSkipList *krsl, T_KRSkipListNode **update, 
+_kr_skiplist_lookup_internal(T_KRSkipList *krsl, T_KRSkipListNode **update, 
                             unsigned int key, void *value)
 {
     T_KRSkipListNode *x;
@@ -105,7 +105,7 @@ kr_skiplist_insert(T_KRSkipList *krsl, unsigned int key, void *value)
     T_KRSkipListNode *update[ZSKIPLIST_MAXLEVEL], *x;
     int i, level;
 
-    x = kr_skiplist_search_internal(krsl, update, key, value);
+    x = _kr_skiplist_lookup_internal(krsl, update, key, value);
     if (x && key == x->key && !krsl->compare_func(x->value, value)) {
         x->value = value;
         return x;
@@ -128,13 +128,12 @@ kr_skiplist_insert(T_KRSkipList *krsl, unsigned int key, void *value)
     return x;
 }
 
-/* Delete an element with matching key/value from the skiplist. */
 int kr_skiplist_delete(T_KRSkipList *krsl, unsigned int key, void *value) 
 {
     T_KRSkipListNode *update[ZSKIPLIST_MAXLEVEL], *x;
     int i;
 
-    x = kr_skiplist_search_internal(krsl, update, key, value);
+    x = _kr_skiplist_lookup_internal(krsl, update, key, value);
     if (x && key == x->key && !krsl->compare_func(x->value, value)) {
         for (i = 0; i < krsl->level; i++) {
             if (update[i]->forward[i] == x) {
@@ -148,13 +147,42 @@ int kr_skiplist_delete(T_KRSkipList *krsl, unsigned int key, void *value)
             krsl->level--;
         
         krsl->length--;
-        return 1;
+        return 0;
     }
     
-    return 0;
+    return -1;
 }
 
-void *kr_skiplist_lookup(T_KRSkipList *krsl, unsigned int key)
+
+void *kr_skiplist_lookup(T_KRSkipList *krsl, unsigned int key, void *value)
+{
+    T_KRSkipListNode *update[ZSKIPLIST_MAXLEVEL], *x;
+
+    x = _kr_skiplist_lookup_internal(krsl, update, key, value);
+    if (x && key == x->key && !krsl->compare_func(x->value, value)) {
+        return x->value;
+    }
+    
+    return NULL;
+}
+
+
+void 
+kr_skiplist_foreach(T_KRSkipList *krsl, KRForEachFunc foreach_func, void *data)
+{
+    T_KRSkipListNode *node = krsl->header->forward[0], *next;
+
+    while(node) {
+        next = node->forward[0];
+        if (foreach_func) {
+            foreach_func(node->value, data);
+        }
+        node = next;
+    }
+}
+
+
+void *kr_skiplist_lookup_cycle(T_KRSkipList *krsl, unsigned int key)
 {
     T_KRSkipListNode *x;
     int i;

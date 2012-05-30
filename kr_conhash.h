@@ -5,6 +5,7 @@
 
 typedef unsigned int (*KRHashFunc)(const void *key);
 
+/* forward declaretion */
 typedef struct _kr_virtual_node_t T_KRVirtualNode;
 
 typedef enum {
@@ -16,16 +17,18 @@ typedef enum {
 /* actual node structure */
 typedef struct _kr_actual_node_t
 {
+	unsigned int    hash;        /*node hash, hash(id)*/
 	char            id[100];     /*node identifier, should be unique!*/
 	unsigned int    weights;     /*node weights, the replicas of this node*/
-	T_KRVirtualNode *vnodes;    /*vitual nodes of this actual node*/
+	unsigned int    kicks;       /*node kicks, the kick times of this node*/
+	T_KRVirtualNode *vnodes;     /*vitual nodes of this actual node*/
 	E_KRNodeStatus  status;      /*node status*/
 }T_KRActualNode;
 
 /* virtual node structure */
 struct _kr_virtual_node_t
 {
-	unsigned int    hash;
+	unsigned int    hash;        /* vnode hash, hash(vid)*/
 	char            vid[128];    /* vnode identifier, come from nodeid!*/
 	T_KRActualNode *node;        /* pointer to the actual node */
 };
@@ -33,22 +36,21 @@ struct _kr_virtual_node_t
 /* consistent hashing */
 typedef struct _kr_conhash_t
 {
-	T_KRSkipList   *vnode_list;  /* skiplist of virtual nodes */
-	unsigned int    mod;         /* hash mod  */
-	unsigned int    node_num;    /* actual nodes number */
 	KRHashFunc      hash_func;   /* hash function */
+	T_KRSkipList   *vnode_list;  /* skiplist of virtual nodes */
+	T_KRSkipList   *node_list;   /* skiplist of actual nodes */
 }T_KRConHash;
 
 
 
-T_KRConHash *kr_conhash_construct(unsigned int mod, KRHashFunc hash_func);
+T_KRConHash *kr_conhash_construct(KRHashFunc hash_func);
 void kr_conhash_destruct(T_KRConHash *krch);
 
-T_KRActualNode *kr_conhash_create_node(char *id, unsigned int weights);
-void kr_conhash_free_node(T_KRActualNode *node);
+T_KRActualNode *kr_conhash_lookup(T_KRConHash *krch, char *id);
+int kr_conhash_add(T_KRConHash *krch, char *id, unsigned int weights);
+int kr_conhash_remove(T_KRConHash *krch, char *id);
+int kr_conhash_adjust_weights(T_KRConHash *krch, char *id, unsigned int weights);
 
-int kr_conhash_insert(T_KRConHash *krch, T_KRActualNode *node);
-int kr_conhash_delete(T_KRConHash *krch, T_KRActualNode *node);
 T_KRActualNode *kr_conhash_locate(T_KRConHash *krch, char *object);
 
 #endif /* __KR_CONHASH_H__ */
